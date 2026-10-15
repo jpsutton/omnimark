@@ -177,9 +177,9 @@ if(WIN32)
     set(CPACK_NSIS_INSTALLED_ICON_NAME "omnimark.exe")
     set(CPACK_NSIS_DISPLAY_NAME "Omnimark")
     set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
-    set(CPACK_NSIS_CREATE_ICONS_EXTRA
-        "CreateShortCut '$SMPROGRAMS\\$STARTMENU_FOLDER\\Omnimark.lnk' '$INSTDIR\\omnimark.exe'")
-    set(CPACK_NSIS_DELETE_ICONS_EXTRA "Delete '$SMPROGRAMS\\$START_MENU\\Omnimark.lnk'")
+    # Values reach NSIS exactly as written (CPACK_VERBATIM_VARIABLES below), so
+    # these use NSIS syntax: single backslashes, $INSTDIR, quotes as-is.
+    # The Start-menu shortcut comes from CPACK_PACKAGE_EXECUTABLES.
     # Register "Open with Omnimark" for Markdown files.
     set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS [=[
   WriteRegStr HKCU "Software\Classes\Omnimark.Markdown" "" "Markdown Document"
@@ -203,6 +203,8 @@ elseif(APPLE)
 else()
     set(CPACK_GENERATOR "TGZ")
 endif()
+# Write CPack values to CPackConfig.cmake escaped, exactly as set above.
+set(CPACK_VERBATIM_VARIABLES YES)
 include(CPack)
 
 if(OMNIMARK_BUILD_TESTS)
