@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' omnimark://app; style-src 'self' 'unsafe-inline'; img-src 'self' omnimark: data: blob: https: http:; font-src 'self' data:; worker-src 'self' blob:; connect-src 'self' omnimark:; object-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <title>Omnimark</title>
+  </head>
+  <body>
+    <div id="app" data-mode="preview">
+      <section id="editor-pane" aria-label="Markdown source"></section>
+      <div id="divider" role="separator" aria-orientation="vertical" tabindex="-1"></div>
+      <section id="preview-pane" aria-label="Preview">
+        <main id="preview" class="markdown-body" aria-live="polite"></main>
+      </section>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

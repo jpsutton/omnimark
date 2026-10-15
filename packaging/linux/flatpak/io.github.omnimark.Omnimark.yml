@@ -1,0 +1,42 @@
+# Flatpak build. The web frontend is built beforehand (Flatpak builds have no
+# network access), so run `pnpm --dir web install && pnpm --dir web build` first:
+#
+#   flatpak-builder --user --install --force-clean build-dir io.github.omnimark.Omnimark.yml
+id: io.github.omnimark.Omnimark
+runtime: org.kde.Platform
+runtime-version: '6.10'
+sdk: org.kde.Sdk
+base: io.qt.qtwebengine.BaseApp
+base-version: '6.10'
+command: omnimark
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # Documents can live anywhere; the app only reads what the user opens.
+  - --filesystem=home
+  - --filesystem=/media
+  - --filesystem=/run/media
+  # Remote images in documents (can be turned off in Settings).
+  - --share=network
+  - --env=QTWEBENGINEPROCESS_PATH=/app/bin/QtWebEngineProcess
+cleanup-commands:
+  - /app/cleanup-BaseApp.sh
+modules:
+  - name: omnimark
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DOMNIMARK_BUILD_WEB=OFF
+      - -DOMNIMARK_BUILD_TESTS=OFF
+    sources:
+      - type: dir
+        path: ../../..
+        skip:
+          - build
+          - web/node_modules
+          - packaging/linux/flatpak/build-dir
+          - packaging/linux/flatpak/.flatpak-builder
+          - packaging/linux/arch/src
+          - packaging/linux/arch/pkg
