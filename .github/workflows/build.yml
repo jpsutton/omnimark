@@ -99,9 +99,11 @@ jobs:
           node-version: 24
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
+      # Qt 6.10: 6.8 links Apple's removed AGL framework on macOS; Windows
+      # uses the same version so both platforms test the same Qt.
       - uses: jurplel/install-qt-action@v4
         with:
-          version: '6.8.*'
+          version: '6.10.*'
           arch: win64_msvc2022_64
           modules: 'qtwebengine qtwebchannel qtpositioning'
           cache: true
@@ -134,7 +136,7 @@ jobs:
           cache-dependency-path: web/pnpm-lock.yaml
       - uses: jurplel/install-qt-action@v4
         with:
-          version: '6.8.*'
+          version: '6.10.*'
           modules: 'qtwebengine qtwebchannel qtpositioning'
           cache: true
       - run: brew install ninja
