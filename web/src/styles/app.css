@@ -1,0 +1,42 @@
+html, body { height: 100%; overflow: hidden; }
+
+#app {
+  display: grid;
+  grid-template-columns: var(--om-split, 50%) 5px 1fr;
+  height: 100vh;
+}
+#app[data-mode="preview"] { grid-template-columns: 0 0 1fr; }
+#app[data-mode="source"] { grid-template-columns: 1fr 0 0; }
+#app[data-mode="preview"] #editor-pane,
+#app[data-mode="preview"] #divider,
+#app[data-mode="source"] #divider,
+#app[data-mode="source"] #preview-pane { display: none; }
+
+/* Explicit columns: hidden panes must not shift the others into their track. */
+#editor-pane { grid-column: 1; grid-row: 1; }
+#divider { grid-column: 2; grid-row: 1; }
+#preview-pane { grid-column: 3; grid-row: 1; }
+
+#editor-pane, #preview-pane { min-width: 0; min-height: 0; overflow: hidden; }
+#preview-pane { overflow-y: auto; overflow-x: hidden; }
+#editor-pane .cm-editor { height: 100%; }
+
+#divider {
+  cursor: col-resize;
+  background: var(--om-border-muted);
+  border-left: 2px solid var(--om-bg);
+  border-right: 2px solid var(--om-bg);
+}
+#divider:hover, #divider.dragging { background: var(--om-link); }
+
+@media print {
+  html, body { height: auto; overflow: visible; }
+  #app { display: block; height: auto; }
+  #editor-pane, #divider { display: none !important; }
+  #preview-pane { display: block !important; overflow: visible; }
+}
+
+::highlight(om-find) { background-color: #fff8c5; color: #1f2328; }
+::highlight(om-find-current) { background-color: #f9a825; color: #1f2328; }
+:root[data-theme="dark"] ::highlight(om-find) { background-color: #bb800966; color: inherit; }
+:root[data-theme="dark"] ::highlight(om-find-current) { background-color: #d29922; color: #0d1117; }

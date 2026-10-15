@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.omnimark.Omnimark</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Omnimark</name>
+  <summary>Markdown viewer and editor</summary>
+  <description>
+    <p>Omnimark renders Markdown the way you expect from the web, natively on your desktop:</p>
+    <ul>
+      <li>GitHub Flavored Markdown, footnotes, alerts and front matter</li>
+      <li>Syntax highlighting with line numbers for hundreds of languages</li>
+      <li>Diagrams and charts from code blocks: Mermaid, Graphviz, Vega-Lite, WaveDrom, nomnoml, ABC music, CSV tables</li>
+      <li>KaTeX math</li>
+      <li>Split editor with synchronized scrolling and live reload</li>
+      <li>Folder sidebar, outline, search, and PDF/HTML export</li>
+    </ul>
+  </description>
+  <developer id="io.github.omnimark">
+    <name>Jared Sutton</name>
+  </developer>
+  <url type="homepage">https://github.com/jpsutton/omnimark</url>
+  <url type="bugtracker">https://github.com/jpsutton/omnimark/issues</url>
+  <url type="vcs-browser">https://github.com/jpsutton/omnimark</url>
+  <launchable type="desktop-id">io.github.omnimark.Omnimark.desktop</launchable>
+  <provides>
+    <binary>omnimark</binary>
+    <mediatype>text/markdown</mediatype>
+  </provides>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.1.0" date="2026-10-15"/>
+  </releases>
+</component>

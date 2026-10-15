@@ -1,0 +1,78 @@
+:root {
+  --cm-bg: var(--om-bg);
+  --cm-gutter: var(--om-subtle-bg);
+  --cm-active-line: #8c959f14;
+  --cm-selection: #0969da33;
+  --cm-cursor: var(--om-fg);
+  --cm-keyword: #cf222e;
+  --cm-string: #0a3069;
+  --cm-number: #0550ae;
+  --cm-comment: #59636e;
+  --cm-function: #8250df;
+  --cm-type: #953800;
+  --cm-property: #0550ae;
+  --cm-tag: #116329;
+  --cm-mark: #8c959f;
+}
+:root[data-theme="dark"] {
+  --cm-active-line: #6e768126;
+  --cm-selection: #388bfd40;
+  --cm-keyword: #ff7b72;
+  --cm-string: #a5d6ff;
+  --cm-number: #79c0ff;
+  --cm-comment: #9198a1;
+  --cm-function: #d2a8ff;
+  --cm-type: #ffa657;
+  --cm-property: #79c0ff;
+  --cm-tag: #7ee787;
+  --cm-mark: #6e7681;
+}
+
+#editor-pane .cm-editor {
+  font-size: var(--om-editor-font-size, 14px);
+  background: var(--cm-bg);
+  color: var(--om-fg);
+}
+#editor-pane .cm-scroller { font-family: var(--om-mono); line-height: 1.55; }
+#editor-pane .cm-content { padding: 16px 0 50vh; caret-color: var(--cm-cursor); }
+#editor-pane .cm-line { padding: 0 16px 0 8px; }
+#editor-pane .cm-gutters {
+  background: var(--cm-gutter);
+  color: var(--om-line-number);
+  border-right: 1px solid var(--om-border-muted);
+}
+#editor-pane .cm-activeLine { background: var(--cm-active-line); }
+#editor-pane .cm-activeLineGutter { background: var(--cm-active-line); color: var(--om-fg); }
+#editor-pane .cm-cursor { border-left-color: var(--cm-cursor); }
+#editor-pane .cm-focused .cm-selectionBackground,
+#editor-pane .cm-selectionBackground,
+#editor-pane ::selection { background: var(--cm-selection) !important; }
+#editor-pane .cm-selectionMatch { background: var(--om-highlight-bg); }
+#editor-pane .cm-searchMatch { background: var(--om-mark-bg); outline: 1px solid var(--om-warning); }
+#editor-pane .cm-searchMatch-selected { background: var(--om-warning); color: var(--om-bg); }
+#editor-pane .cm-panels { background: var(--om-subtle-bg); color: var(--om-fg); border-color: var(--om-border); }
+#editor-pane .cm-panels input, #editor-pane .cm-panels button {
+  font: 13px var(--om-font);
+  color: var(--om-fg);
+  background: var(--om-bg);
+  border: 1px solid var(--om-border);
+  border-radius: 4px;
+}
+#editor-pane .cm-foldPlaceholder { background: var(--om-subtle-bg); border-color: var(--om-border); color: var(--om-muted); }
+
+.cm-md-h1 { font-weight: 700; font-size: 1.3em; }
+.cm-md-h2 { font-weight: 700; font-size: 1.15em; }
+.cm-md-h { font-weight: 700; }
+.cm-md-link { color: var(--om-link); }
+.cm-md-code { color: var(--cm-string); }
+.cm-md-quote { color: var(--om-muted); font-style: italic; }
+.cm-md-mark { color: var(--cm-mark); }
+.cm-tok-keyword { color: var(--cm-keyword); }
+.cm-tok-string { color: var(--cm-string); }
+.cm-tok-number { color: var(--cm-number); }
+.cm-tok-comment { color: var(--cm-comment); font-style: italic; }
+.cm-tok-function { color: var(--cm-function); }
+.cm-tok-type { color: var(--cm-type); }
+.cm-tok-property { color: var(--cm-property); }
+.cm-tok-tag { color: var(--cm-tag); }
+.cm-tok-invalid { color: var(--om-caution); }
