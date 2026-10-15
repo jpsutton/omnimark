@@ -98,10 +98,42 @@ omnimark [files or folders...]
 | Arch Linux | `cd packaging/linux/arch && makepkg -si` |
 | Flatpak | Build `web/` first, then `flatpak-builder --user --install build-dir packaging/linux/flatpak/io.github.omnimark.Omnimark.yml` |
 | AppImage | `packaging/linux/appimage/build-appimage.sh` after a release build. Needs `qt6-serialport` and `qt6-wayland`. The AppImage only runs on distros at least as new as the build host. |
-| Windows | `cpack --config build/release/CPackConfig.cmake -G NSIS`. Bundles Qt via windeployqt and registers "Open with" for `.md`. |
-| macOS | `cpack --config build/release/CPackConfig.cmake -G DragNDrop`. Bundles Qt via macdeployqt; the `.app` declares Markdown document types. |
+| Windows (best effort, unsigned) | `cpack --config build/release/CPackConfig.cmake -G NSIS`. Bundles Qt via windeployqt and registers "Open with" for `.md`. |
+| macOS (best effort, unsigned) | `cpack --config build/release/CPackConfig.cmake -G DragNDrop`. Bundles Qt via macdeployqt; the `.app` declares Markdown document types. |
 
-CI (`.github/workflows/ci.yml`) builds and tests on all three OSes, builds the Flatpak, and attaches packages to a GitHub release when a `v*` tag is pushed.
+### Releases and CI
+
+Changes flow from feature branches into `staging`, then from `staging` into `release`.
+
+- `checks.yml` runs on every pull request: static checks, web unit and browser tests, and the Linux C++/GUI tests.
+- `build.yml` runs on pull requests into `release`. It builds the AppImage, Arch package and Flatpak, which a release requires, and the Windows and macOS packages, which are best effort and unsigned.
+- `release.yml` runs when `staging` is merged into `release` with a merge commit. It publishes that pull request's build as a GitHub Release tagged `YYYY.MM.DD`, signs every file with the release key, and includes `SHA256SUMS` and a signed pacman repo.
+
+Verify a download:
+
+```bash
+curl -sL https://raw.githubusercontent.com/jpsutton/omnimark/staging/packaging/omnimark-signing-key.asc | gpg --import
+gpg --verify SHA256SUMS.sig SHA256SUMS && sha256sum --check --ignore-missing SHA256SUMS
+```
+
+Release key: `5F2F BC3C 175D 49D9 F491  2198 97A9 E841 85E0 2236` (Ed25519, also in [packaging/omnimark-signing-key.asc](packaging/omnimark-signing-key.asc)).
+
+Arch Linux users can install from the signed pacman repo:
+
+```ini
+# /etc/pacman.conf
+[omnimark]
+Server = https://github.com/jpsutton/omnimark/releases/latest/download
+```
+
+Then trust the key and install:
+
+```bash
+curl -sLO https://github.com/jpsutton/omnimark/releases/latest/download/omnimark-signing-key.asc
+sudo pacman-key --add omnimark-signing-key.asc
+sudo pacman-key --lsign-key 5F2FBC3C175D49D9F491219897A9E84185E02236
+sudo pacman -Sy omnimark
+```
 
 ## Development
 
