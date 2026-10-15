@@ -120,13 +120,17 @@ Release key: `5F2F BC3C 175D 49D9 F491  2198 97A9 E841 85E0 2236` (Ed25519, also
 
 Arch Linux users can install from the signed pacman repo:
 
+```bash
+scripts/setup-arch-repo.sh --install
+```
+
+The script adds `[omnimark]` to `/etc/pacman.conf` and trusts the release key, refusing it if the fingerprint doesn't match. It is safe to re-run, and `--remove` undoes it. To set it up by hand instead:
+
 ```ini
 # /etc/pacman.conf
 [omnimark]
 Server = https://github.com/jpsutton/omnimark/releases/latest/download
 ```
-
-Then trust the key and install:
 
 ```bash
 curl -sLO https://github.com/jpsutton/omnimark/releases/latest/download/omnimark-signing-key.asc
