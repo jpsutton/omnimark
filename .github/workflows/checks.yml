@@ -1,0 +1,91 @@
+# Checks on every pull request (into staging and into release): static
+# checks, the web frontend's unit and browser tests, and the C++ unit and GUI
+# tests on Linux. No packages; build.yml does those for release PRs.
+name: checks
+
+on:
+  pull_request:
+    branches: [staging, release]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # release only takes what staging has: changes go feature branch -> staging
+  # -> release.
+  source-branch:
+    if: github.event_name == 'pull_request' && github.base_ref == 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull requests into release must come from staging
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        run: |
+          if [ "$HEAD_REF" != staging ] || [ "$HEAD_REPO" != "$GITHUB_REPOSITORY" ]; then
+            echo "::error::release takes pull requests from staging only (this one is from $HEAD_REPO:$HEAD_REF)"
+            exit 1
+          fi
+
+  static:
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+    steps:
+      - name: Install tools
+        run: pacman -Syu --noconfirm --needed git shellcheck desktop-file-utils appstream libxml2
+
+      - uses: actions/checkout@v4
+
+      - name: scripts/ci/check.sh
+        run: |
+          git config --global --add safe.directory "*"
+          useradd -m builder
+          chown -R builder: "$GITHUB_WORKSPACE"
+          su builder -c 'git config --global --add safe.directory "*" && scripts/ci/check.sh'
+
+      - name: actionlint
+        uses: docker://rhysd/actionlint:latest
+        with:
+          args: -color
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - name: Third-party notices are up to date
+        run: pnpm notices && git diff --exit-code -- ../THIRD_PARTY_NOTICES.md
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: web/test-results
+          retention-days: 7
+
+  linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and test (archlinux container)
+        run: docker run --rm -v "$GITHUB_WORKSPACE:/src" -w /src archlinux:latest scripts/ci/test-linux.sh

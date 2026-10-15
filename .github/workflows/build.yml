@@ -1,0 +1,151 @@
+# Full build on pull requests into release: every package for every platform.
+# release.yml publishes the artifacts of the final PR head without rebuilding.
+# workflow_dispatch runs it on any branch, for testing the build itself.
+name: build
+
+on:
+  pull_request:
+    branches: [release]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# staging is the head of the staging -> release pull request, so every merge
+# into staging pushes to it and starts a new full build. Only the newest head
+# matters, so a push cancels the build still running for the previous one.
+concurrency:
+  group: build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  appimage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build AppImage (archlinux container)
+        run: |
+          docker run --rm -v "$GITHUB_WORKSPACE:/src" -w /src archlinux:latest scripts/ci/build-appimage.sh
+          sudo chown -R "$(id -u):$(id -g)" out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: omnimark-appimage
+          path: out/*.AppImage
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+  arch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Arch package (archlinux container)
+        run: |
+          docker run --rm -v "$GITHUB_WORKSPACE:/src" -w /src archlinux:latest scripts/ci/build-arch.sh
+          sudo chown -R "$(id -u):$(id -g)" out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: omnimark-arch
+          path: out/*.pkg.tar.zst
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+  flatpak:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:kde-6.10
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+      # Flatpak builds have no network, so the web frontend is built first.
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Build web frontend
+        run: pnpm --dir web install --frozen-lockfile && pnpm --dir web build
+      - uses: flathub-infra/flatpak-github-actions/flatpak-builder@master
+        with:
+          bundle: Omnimark.flatpak
+          manifest-path: packaging/linux/flatpak/io.github.omnimark.Omnimark.yml
+          cache-key: flatpak-builder-${{ github.sha }}
+          upload-artifact: false
+      - uses: actions/upload-artifact@v4
+        with:
+          name: omnimark-flatpak
+          path: Omnimark.flatpak
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.*'
+          arch: win64_msvc2022_64
+          modules: 'qtwebengine qtwebchannel qtpositioning'
+          cache: true
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Build
+        run: |
+          cmake --preset release -DOMNIMARK_BUILD_TESTS=OFF
+          cmake --build --preset release
+      - name: Package (NSIS)
+        run: cpack --config build/release/CPackConfig.cmake -G NSIS -B out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: omnimark-windows
+          path: out/*.exe
+          if-no-files-found: error
+          retention-days: 14
+
+  macos:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.*'
+          modules: 'qtwebengine qtwebchannel qtpositioning'
+          cache: true
+      - run: brew install ninja
+      - name: Build
+        run: |
+          cmake --preset release -DOMNIMARK_BUILD_TESTS=OFF
+          cmake --build --preset release
+      - name: Package (dmg)
+        run: cpack --config build/release/CPackConfig.cmake -G DragNDrop -B out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: omnimark-macos
+          path: out/*.dmg
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
