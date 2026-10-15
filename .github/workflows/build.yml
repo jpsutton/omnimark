@@ -112,6 +112,11 @@ jobs:
         run: |
           cmake --preset release -DOMNIMARK_BUILD_TESTS=OFF
           cmake --build --preset release
+      # windows-latest doesn't ship NSIS.
+      - name: Install NSIS
+        run: |
+          choco install nsis --no-progress -y
+          "C:\Program Files (x86)\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Package (NSIS)
         run: cpack --config build/release/CPackConfig.cmake -G NSIS -B out
       - uses: actions/upload-artifact@v4
