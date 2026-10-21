@@ -28,6 +28,7 @@ public:
     QString defaultViewMode() const { return m_defaultViewMode; } // preview | split | source
     QString plantumlServer() const { return m_plantumlServer; } // empty = PlantUML disabled
     QString toolbarStyle() const { return m_toolbarStyle; } // icons | beside | under
+    bool checkForUpdates() const { return m_checkForUpdates; } // macOS release builds only
 
     void setTheme(Theme theme);
     void setPreviewStyle(const QString &style);
@@ -42,6 +43,7 @@ public:
     void setDefaultViewMode(const QString &mode);
     void setPlantumlServer(const QString &url);
     void setToolbarStyle(const QString &style);
+    void setCheckForUpdates(bool on);
 
     // Contents of <config>/custom.css (empty if none); hot-reloaded.
     QString customCssPath() const;
@@ -72,6 +74,7 @@ private:
     QString m_defaultViewMode = QStringLiteral("preview");
     QString m_plantumlServer;
     QString m_toolbarStyle = QStringLiteral("icons");
+    bool m_checkForUpdates = true;
     QString m_customCss;
     QFileSystemWatcher m_cssWatcher;
 };

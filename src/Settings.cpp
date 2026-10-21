@@ -26,6 +26,7 @@ Settings::Settings(QObject *parent)
     m_defaultViewMode = s.value(QStringLiteral("defaultViewMode"), m_defaultViewMode).toString();
     m_plantumlServer = s.value(QStringLiteral("plantumlServer")).toString();
     m_toolbarStyle = s.value(QStringLiteral("toolbarStyle"), m_toolbarStyle).toString();
+    m_checkForUpdates = s.value(QStringLiteral("checkForUpdates"), m_checkForUpdates).toBool();
     s.endGroup();
 
     connect(&m_cssWatcher, &QFileSystemWatcher::fileChanged, this, [this] {
@@ -58,6 +59,7 @@ void Settings::save()
     s.setValue(QStringLiteral("defaultViewMode"), m_defaultViewMode);
     s.setValue(QStringLiteral("plantumlServer"), m_plantumlServer);
     s.setValue(QStringLiteral("toolbarStyle"), m_toolbarStyle);
+    s.setValue(QStringLiteral("checkForUpdates"), m_checkForUpdates);
     s.endGroup();
     emit changed();
 }
@@ -84,6 +86,7 @@ OMNIMARK_SETTER(setSyncScroll, m_syncScroll, bool)
 OMNIMARK_SETTER(setDefaultViewMode, m_defaultViewMode, const QString &)
 OMNIMARK_SETTER(setPlantumlServer, m_plantumlServer, const QString &)
 OMNIMARK_SETTER(setToolbarStyle, m_toolbarStyle, const QString &)
+OMNIMARK_SETTER(setCheckForUpdates, m_checkForUpdates, bool)
 
 #undef OMNIMARK_SETTER
 
