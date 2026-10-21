@@ -31,7 +31,8 @@ case ${1:-} in
 esac
 
 if [[ $EUID -ne 0 ]]; then
-  exec sudo --preserve-env=PACMAN_CONF "$0" "$@"
+  # Through bash, so it also works when run as `bash setup-arch-repo.sh`.
+  exec sudo --preserve-env=PACMAN_CONF bash "$0" "$@"
 fi
 
 log() { printf '==> %s\n' "$*"; }
