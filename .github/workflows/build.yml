@@ -146,11 +146,23 @@ jobs:
           cache: true
       - run: brew install ninja
       - name: Build
+        # The PR head commit is what release.yml publishes in update.json; the
+        # app updates itself when the latest release names a different commit.
+        env:
+          BUILD_COMMIT: ${{ github.event.pull_request.head.sha }}
         run: |
-          cmake --preset release -DOMNIMARK_BUILD_TESTS=OFF
+          cmake --preset release -DOMNIMARK_BUILD_TESTS=OFF -DOMNIMARK_BUILD_COMMIT="$BUILD_COMMIT"
           cmake --build --preset release
       - name: Package (dmg)
         run: cpack --config build/release/CPackConfig.cmake -G DragNDrop -B out
+      - name: Check the dmg
+        run: |
+          set -euo pipefail
+          mnt=$(mktemp -d)
+          hdiutil attach -quiet -nobrowse -readonly -mountpoint "$mnt" out/*.dmg
+          codesign --verify --deep --strict --verbose=2 "$mnt/omnimark.app"
+          test -f "$mnt/omnimark.app/Contents/Resources/install-macos.sh"
+          hdiutil detach -quiet "$mnt"
       - uses: actions/upload-artifact@v4
         with:
           name: omnimark-macos

@@ -1,6 +1,7 @@
 #include "SettingsDialog.h"
 
 #include "Settings.h"
+#include "Updater.h"
 
 #include <QCheckBox>
 #include <QComboBox>
@@ -135,6 +136,12 @@ SettingsDialog::SettingsDialog(Settings *settings, QWidget *parent)
     editorForm->addRow(wrap);
     editorForm->addRow(sync);
     editorForm->addRow(vim);
+    if (Updater::isSupported()) {
+        auto *updates = new QCheckBox(tr("Check for updates automatically"));
+        updates->setChecked(settings->checkForUpdates());
+        connect(updates, &QCheckBox::toggled, settings, &Settings::setCheckForUpdates);
+        editorForm->addRow(updates);
+    }
 
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Close);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::accept);

@@ -72,6 +72,33 @@ jobs:
           done
           ls -la dist
 
+      - name: Pick the tag
+        id: tag
+        run: |
+          set -euo pipefail
+          base=$(date -u +%Y.%m.%d)
+          tag=$base
+          n=1
+          while git rev-parse -q --verify "refs/tags/$tag" >/dev/null; do
+            n=$((n + 1)); tag=$base.$n
+          done
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      # The macOS app's updater reads this from releases/latest (see Updater.h).
+      # Without a macOS build there's nothing to update to, so no manifest.
+      - name: Update manifest
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+          HEAD_SHA: ${{ steps.build.outputs.head }}
+        run: |
+          set -euo pipefail
+          if compgen -G 'dist/*.dmg' >/dev/null; then
+            jq -n --arg version "$TAG" --arg commit "$HEAD_SHA" '{version: $version, commit: $commit}' > dist/update.json
+            cat dist/update.json
+          else
+            echo "::warning::no macOS build; releasing without update.json"
+          fi
+
       - name: Sign (archlinux container)
         env:
           OMNIMARK_GPG_KEY: ${{ secrets.OMNIMARK_GPG_KEY }}
@@ -82,18 +109,10 @@ jobs:
           sudo chown -R "$(id -u):$(id -g)" dist
 
       - name: Tag
-        id: tag
         run: |
           set -euo pipefail
-          base=$(date -u +%Y.%m.%d)
-          tag=$base
-          n=1
-          while git rev-parse -q --verify "refs/tags/$tag" >/dev/null; do
-            n=$((n + 1)); tag=$base.$n
-          done
-          git tag "$tag" "$GITHUB_SHA"
-          git push origin "$tag"
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          git tag "${{ steps.tag.outputs.tag }}" "$GITHUB_SHA"
+          git push origin "${{ steps.tag.outputs.tag }}"
 
       - name: GitHub Release
         run: |
