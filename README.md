@@ -42,12 +42,23 @@ sudo pacman -Sy omnimark
 - **AppImage:** download [`Omnimark-x86_64.AppImage`](https://github.com/jpsutton/omnimark/releases/latest/download/Omnimark-x86_64.AppImage), then run `chmod +x Omnimark-x86_64.AppImage && ./Omnimark-x86_64.AppImage`. It needs a recent distro, because it only runs on systems at least as new as the build host.
 - **Flatpak:** download [`Omnimark.flatpak`](https://github.com/jpsutton/omnimark/releases/latest/download/Omnimark.flatpak), then run `flatpak install --user Omnimark.flatpak`. It uses the `org.kde.Platform` 6.10 runtime from Flathub. If you don't have that runtime, run `flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo` first.
 
-### Windows and macOS
+### macOS
 
-These builds are best effort and not code-signed.
+The macOS build runs on Apple silicon. It's best effort and isn't signed by Apple. The easiest way to install it is the install script. It downloads the latest `.dmg`, checks it against the release's `SHA256SUMS`, and copies Omnimark into `/Applications` (or `~/Applications` if you can't write to `/Applications`):
 
-- **Windows:** run `Omnimark-<version>-win64.exe` from the release. SmartScreen warns about an unknown publisher: choose **More info → Run anyway**. The installer registers Omnimark under "Open with" for `.md` files.
-- **macOS (Apple silicon):** open `Omnimark-<version>-Darwin.dmg` and drag Omnimark to Applications. Gatekeeper blocks the first launch. Either right-click the app and choose **Open**, or run `xattr -dr com.apple.quarantine /Applications/Omnimark.app`.
+```bash
+curl -fsSL https://raw.githubusercontent.com/jpsutton/omnimark/release/scripts/install-macos.sh | bash
+```
+
+Files downloaded with `curl` aren't quarantined, so Omnimark opens without a Gatekeeper prompt.
+
+After that, Omnimark updates itself. It checks for a new release shortly after it starts and every 6 hours after that. You can turn this off in **Settings**, and you can check by hand with **Omnimark › Check for Updates…**. Omnimark downloads the update in the background and installs it when you restart. To update by hand instead, run the install command again.
+
+If you download the `.dmg` in a browser instead, Gatekeeper blocks the first launch. Either right-click the app and choose **Open**, or run `xattr -dr com.apple.quarantine /Applications/omnimark.app`.
+
+### Windows
+
+This build is best effort and not code-signed. Run `Omnimark-<version>-win64.exe` from the release. SmartScreen warns about an unknown publisher: choose **More info → Run anyway**. The installer registers Omnimark under "Open with" for `.md` files.
 
 ### Verifying downloads
 
@@ -157,7 +168,7 @@ To install a release build, see [Install](#install). To build the packages yours
 | Flatpak | Build `web/` first, then `flatpak-builder --user --install build-dir packaging/linux/flatpak/io.github.omnimark.Omnimark.yml` |
 | AppImage | `packaging/linux/appimage/build-appimage.sh` after a release build. Needs `qt6-serialport` and `qt6-wayland`. The AppImage only runs on distros at least as new as the build host. |
 | Windows (best effort, unsigned) | `cpack --config build/release/CPackConfig.cmake -G NSIS`. Bundles Qt via windeployqt and registers "Open with" for `.md`. |
-| macOS (best effort, unsigned) | `cpack --config build/release/CPackConfig.cmake -G DragNDrop`. Bundles Qt via macdeployqt; the `.app` declares Markdown document types. |
+| macOS (best effort, ad-hoc signed) | `cpack --config build/release/CPackConfig.cmake -G DragNDrop`. Bundles Qt via macdeployqt and `scripts/install-macos.sh` for the updater, then signs the bundle ad hoc; the `.app` declares Markdown document types. Pass `-DOMNIMARK_BUILD_COMMIT=<sha>` to turn on the updater (CI does this for release builds). |
 
 ### Releases and CI
 
@@ -165,7 +176,7 @@ Changes flow from feature branches into `staging`, then from `staging` into `rel
 
 - `checks.yml` runs on every pull request: static checks, web unit and browser tests, and the Linux C++/GUI tests.
 - `build.yml` runs on pull requests into `release`. It builds the AppImage, Arch package and Flatpak, which a release requires, and the Windows and macOS packages, which are best effort and unsigned.
-- `release.yml` runs when `staging` is merged into `release` with a merge commit. It publishes that pull request's build as a GitHub Release tagged `YYYY.MM.DD`, signs every file with the release key, and includes `SHA256SUMS` and a signed pacman repo.
+- `release.yml` runs when `staging` is merged into `release` with a merge commit. It publishes that pull request's build as a GitHub Release tagged `YYYY.MM.DD`, signs every file with the release key, and includes `SHA256SUMS`, a signed pacman repo and `update.json`, which the macOS updater reads.
 
 ## Development
 

@@ -12,6 +12,7 @@ omnimark_add_test(tst_schemehandler)
 omnimark_add_test(tst_filewatcher)
 omnimark_add_test(tst_singleinstance)
 omnimark_add_test(tst_search)
+omnimark_add_test(tst_updater)
 
 # GUI test with real QtWebEngine pages; needs the web frontend built.
 qt_add_executable(tst_mainwindow tst_mainwindow.cpp)

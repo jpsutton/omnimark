@@ -10,6 +10,7 @@ class Settings;
 class FindBar;
 class SearchDock;
 class TocDock;
+class Updater;
 class LocalRoots;
 class QAction;
 class QActionGroup;
@@ -74,6 +75,10 @@ private:
     void exportHtml();
     void showShortcuts();
     void showAbout();
+    void setUpUpdates();
+    // `interactive`: the user asked, so report "up to date" and errors too.
+    void checkForUpdates(bool interactive);
+    void offerRestartForUpdate();
     QString exportPath(const QString &title, const QString &suffix, const QString &filter);
     void handleUrl(DocumentTab *source, const QUrl &url, bool newTab);
     void updateTitle();
@@ -103,6 +108,11 @@ private:
     QToolBar *m_toolbar = nullptr;
     QActionGroup *m_toolbarStyleGroup = nullptr;
     QLabel *m_statsLabel = nullptr;
+    Updater *m_updater = nullptr;
+    QAction *m_updateAction = nullptr;
+    QString m_updateVersion;
+    bool m_interactiveUpdateCheck = false;
+    bool m_relaunchAfterUpdate = false;
     QString m_workspaceRootKey;
     bool m_closing = false;
 };

@@ -8,6 +8,8 @@ set(CMAKE_AUTOMOC ON)
 
 option(OMNIMARK_BUILD_WEB "Build the web frontend with pnpm as part of the build" ON)
 option(OMNIMARK_BUILD_TESTS "Build C++ tests" ON)
+# Set by CI for release builds only; it turns on the macOS updater (see Updater.h).
+set(OMNIMARK_BUILD_COMMIT "" CACHE STRING "Git commit this release build is made from")
 
 find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Widgets Network Concurrent PrintSupport Svg WebEngineCore WebEngineWidgets WebChannel)
 qt_standard_project_setup()
@@ -59,6 +61,7 @@ qt_add_library(omnimark_core STATIC
     src/SettingsDialog.cpp src/SettingsDialog.h
     src/SingleInstance.cpp src/SingleInstance.h
     src/TocDock.cpp src/TocDock.h
+    src/Updater.cpp src/Updater.h
     src/WebPage.cpp src/WebPage.h
     src/WebAssets.cpp src/WebAssets.h
     src/WorkspaceDock.cpp src/WorkspaceDock.h
@@ -67,7 +70,8 @@ target_include_directories(omnimark_core PUBLIC src)
 target_compile_definitions(omnimark_core
     PRIVATE OMNIMARK_SOURCE_WEB_DIST="${OMNIMARK_WEB_DIST}"
             OMNIMARK_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
-    PUBLIC OMNIMARK_VERSION="${PROJECT_VERSION}")
+    PUBLIC OMNIMARK_VERSION="${PROJECT_VERSION}"
+           OMNIMARK_BUILD_COMMIT="${OMNIMARK_BUILD_COMMIT}")
 target_link_libraries(omnimark_core PUBLIC
     Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network Qt6::Concurrent Qt6::PrintSupport Qt6::WebEngineCore Qt6::WebEngineWidgets Qt6::WebChannel)
 
@@ -83,6 +87,10 @@ elseif(APPLE)
     set(OMNIMARK_ICNS "${CMAKE_CURRENT_SOURCE_DIR}/packaging/macos/omnimark.icns")
     set_source_files_properties("${OMNIMARK_ICNS}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
     list(APPEND OMNIMARK_PLATFORM_SOURCES "${OMNIMARK_ICNS}")
+    # Run by the in-app updater (see Updater.h).
+    set(OMNIMARK_INSTALL_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/scripts/install-macos.sh")
+    set_source_files_properties("${OMNIMARK_INSTALL_SCRIPT}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+    list(APPEND OMNIMARK_PLATFORM_SOURCES "${OMNIMARK_INSTALL_SCRIPT}")
 endif()
 
 qt_add_executable(omnimark src/main.cpp ${OMNIMARK_PLATFORM_SOURCES})
@@ -159,6 +167,16 @@ if(WIN32 OR APPLE)
         OUTPUT_SCRIPT OMNIMARK_DEPLOY_SCRIPT
         NO_UNSUPPORTED_PLATFORM_ERROR)
     install(SCRIPT "${OMNIMARK_DEPLOY_SCRIPT}")
+endif()
+if(APPLE)
+    # macdeployqt rewrites the bundled libraries, which breaks their signatures,
+    # and Apple silicon won't run code without a valid one. Sign the bundle
+    # ad hoc: unquarantined copies (install-macos.sh, the updater) then just run.
+    install(CODE [[
+        execute_process(
+            COMMAND codesign --force --deep --sign - "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/omnimark.app"
+            COMMAND_ERROR_IS_FATAL ANY)
+    ]])
 endif()
 
 # ---------------------------------------------------------------------------

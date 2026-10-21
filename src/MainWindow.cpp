@@ -9,6 +9,7 @@
 #include "Settings.h"
 #include "SettingsDialog.h"
 #include "TocDock.h"
+#include "Updater.h"
 #include "WorkspaceDock.h"
 
 #include <QAction>
@@ -32,6 +33,7 @@
 #include <QStatusBar>
 #include <QTabBar>
 #include <QTabWidget>
+#include <QTimer>
 #include <QToolBar>
 #include <QToolButton>
 #include <QUrl>
@@ -138,6 +140,7 @@ MainWindow::MainWindow(QWebEngineProfile *profile, LocalRoots *roots, Settings *
 
     createActions();
     rebuildRecentMenu();
+    setUpUpdates();
     updateTitle();
     updateNavigation();
     updateViewModeActions();
@@ -373,6 +376,10 @@ void MainWindow::createActions()
                                  tr("Omnimark uses Qt (LGPLv3), Chromium via QtWebEngine, and many open source "
                                     "JavaScript libraries. The notices file was not found in this installation."));
     });
+    if (Updater::isSupported()) {
+        m_updateAction = help->addAction(tr("Check for &Updates…"), this, [this] { checkForUpdates(true); });
+        m_updateAction->setMenuRole(QAction::ApplicationSpecificRole);
+    }
     help->addAction(Icons::get("help-about"), tr("&About Omnimark"), this, &MainWindow::showAbout)
         ->setMenuRole(QAction::AboutRole);
 
@@ -883,8 +890,112 @@ void MainWindow::showAbout()
                        tr("<h3>Omnimark %1</h3>"
                           "<p>A Markdown viewer and editor.</p>"
                           "<p>Built with Qt %2 and QtWebEngine; rendering by unified/remark/rehype, "
-                          "Shiki, KaTeX, Mermaid, Graphviz, Vega, abcjs, WaveDrom and nomnoml.</p>")
-                           .arg(QStringLiteral(OMNIMARK_VERSION), QString::fromLatin1(qVersion())));
+                          "Shiki, KaTeX, Mermaid, Graphviz, Vega, abcjs, WaveDrom and nomnoml.</p>"
+                          "%3")
+                           .arg(QStringLiteral(OMNIMARK_VERSION), QString::fromLatin1(qVersion()),
+                                QStringLiteral(OMNIMARK_BUILD_COMMIT).isEmpty()
+                                    ? QString()
+                                    : tr("<p>Build %1</p>").arg(QStringLiteral(OMNIMARK_BUILD_COMMIT).left(12))));
+}
+
+void MainWindow::setUpUpdates()
+{
+    if (!Updater::isSupported())
+        return;
+    m_updater = new Updater(this);
+    connect(qApp, &QCoreApplication::aboutToQuit, this, [this] { m_updater->applyOnExit(m_relaunchAfterUpdate); });
+
+    connect(m_updater, &Updater::updateAvailable, this, [this](const Updater::Release &release) {
+        const bool interactive = std::exchange(m_interactiveUpdateCheck, false);
+        QSettings settings;
+        if (!interactive && settings.value(u"updates/dismissed"_s).toString() == release.version)
+            return;
+        if (!QFileInfo(Updater::installDir()).isWritable()) {
+            if (interactive) {
+                QMessageBox::information(
+                    this, tr("Update Omnimark"),
+                    tr("Omnimark %1 is available, but Omnimark can't write to %2 to update itself. Install it "
+                       "from Terminal:<pre>curl -fsSL https://raw.githubusercontent.com/jpsutton/omnimark/release/"
+                       "scripts/install-macos.sh | bash</pre>")
+                        .arg(release.version, Updater::installDir().toHtmlEscaped()));
+            }
+            return;
+        }
+        QMessageBox box(QMessageBox::Information, tr("Update Omnimark"),
+                        tr("Omnimark %1 is available.").arg(release.version), QMessageBox::NoButton, this);
+        box.setInformativeText(tr("It downloads in the background and installs when you restart Omnimark."));
+        QPushButton *download = box.addButton(tr("Download Update"), QMessageBox::AcceptRole);
+        box.addButton(tr("Later"), QMessageBox::RejectRole);
+        box.setDefaultButton(download);
+        box.exec();
+        if (box.clickedButton() != download) {
+            settings.setValue(u"updates/dismissed"_s, release.version);
+            return;
+        }
+        m_updateVersion = release.version;
+        m_updateAction->setEnabled(false);
+        statusBar()->showMessage(tr("Downloading Omnimark %1…").arg(release.version));
+        m_updater->stage();
+    });
+    connect(m_updater, &Updater::upToDate, this, [this] {
+        if (std::exchange(m_interactiveUpdateCheck, false))
+            QMessageBox::information(this, tr("Update Omnimark"), tr("You're using the latest version of Omnimark."));
+    });
+    connect(m_updater, &Updater::checkFailed, this, [this](const QString &error) {
+        if (std::exchange(m_interactiveUpdateCheck, false))
+            QMessageBox::warning(this, tr("Update Omnimark"), tr("Couldn't check for updates: %1").arg(error));
+    });
+    connect(m_updater, &Updater::staged, this, [this] {
+        statusBar()->clearMessage();
+        m_updateAction->setText(tr("Restart to &Update…"));
+        m_updateAction->setEnabled(true);
+        offerRestartForUpdate();
+    });
+    connect(m_updater, &Updater::stageFailed, this, [this](const QString &error) {
+        statusBar()->clearMessage();
+        m_updateAction->setEnabled(true);
+        QMessageBox::warning(this, tr("Update Omnimark"),
+                             tr("Couldn't download Omnimark %1: %2").arg(m_updateVersion, error));
+    });
+
+    // Check shortly after launch, then a few times a day for long sessions.
+    auto *timer = new QTimer(this);
+    timer->setInterval(6 * 60 * 60 * 1000);
+    auto autoCheck = [this] {
+        if (m_settings->checkForUpdates())
+            checkForUpdates(false);
+    };
+    connect(timer, &QTimer::timeout, this, autoCheck);
+    timer->start();
+    QTimer::singleShot(15 * 1000, this, autoCheck);
+}
+
+void MainWindow::checkForUpdates(bool interactive)
+{
+    if (!m_updater || m_updater->isBusy())
+        return;
+    if (m_updater->isStaged()) {
+        if (interactive)
+            offerRestartForUpdate();
+        return;
+    }
+    m_interactiveUpdateCheck = interactive;
+    m_updater->check();
+}
+
+void MainWindow::offerRestartForUpdate()
+{
+    QMessageBox box(QMessageBox::Information, tr("Update Omnimark"),
+                    tr("Omnimark %1 is ready to install.").arg(m_updateVersion), QMessageBox::NoButton, this);
+    box.setInformativeText(tr("Restart now, or it installs the next time you quit Omnimark."));
+    QPushButton *restart = box.addButton(tr("Restart Now"), QMessageBox::AcceptRole);
+    box.addButton(tr("Later"), QMessageBox::RejectRole);
+    box.setDefaultButton(restart);
+    box.exec();
+    if (box.clickedButton() != restart)
+        return;
+    m_relaunchAfterUpdate = true;
+    close();
 }
 
 void MainWindow::updateStats()
@@ -1132,6 +1243,8 @@ void MainWindow::closeEvent(QCloseEvent *event)
     box.setInformativeText(names.join(u'\n'));
     box.setDefaultButton(QMessageBox::SaveAll);
     const int choice = box.exec();
+    if (choice == QMessageBox::Cancel)
+        m_relaunchAfterUpdate = false; // the quit, and so the restart, was called off
     if (choice == QMessageBox::Discard) {
         m_closing = true;
         close();
