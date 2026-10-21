@@ -4,6 +4,62 @@ A cross-platform desktop Markdown viewer and editor for Linux, Windows and macOS
 
 The window, menus, tabs, docks and dialogs are native Qt widgets. Each document runs in a QtWebEngine (Chromium) view: a TypeScript pipeline renders the preview, and a CodeMirror editor sits beside it.
 
+![Omnimark in split view: file sidebar, Markdown source on the left, rendered preview with an alert, a table and a Mermaid diagram on the right](docs/screenshot/split-view.png)
+
+## Install
+
+Builds are published on the [Releases page](https://github.com/jpsutton/omnimark/releases/latest). Every file is signed with the release key (see [Verifying downloads](#verifying-downloads)).
+
+### Arch Linux (pacman repo)
+
+Each release includes a signed pacman repo, so `pacman -Syu` picks up new versions. To add it:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/jpsutton/omnimark/release/scripts/setup-arch-repo.sh
+bash setup-arch-repo.sh --install
+```
+
+The script adds `[omnimark]` to `/etc/pacman.conf` and adds the release key to the pacman keyring. If the downloaded key's fingerprint doesn't match, the script refuses it. You can run the script again safely. Without `--install` it only adds the repo, and `--remove` removes the repo and the key.
+
+To set it up by hand, add this to `/etc/pacman.conf`:
+
+```ini
+[omnimark]
+Server = https://github.com/jpsutton/omnimark/releases/latest/download
+```
+
+Then trust the key and install:
+
+```bash
+curl -fsSLO https://github.com/jpsutton/omnimark/releases/latest/download/omnimark-signing-key.asc
+sudo pacman-key --add omnimark-signing-key.asc
+sudo pacman-key --lsign-key 5F2FBC3C175D49D9F491219897A9E84185E02236
+sudo pacman -Sy omnimark
+```
+
+### Other Linux
+
+- **AppImage:** download [`Omnimark-x86_64.AppImage`](https://github.com/jpsutton/omnimark/releases/latest/download/Omnimark-x86_64.AppImage), then run `chmod +x Omnimark-x86_64.AppImage && ./Omnimark-x86_64.AppImage`. It needs a recent distro, because it only runs on systems at least as new as the build host.
+- **Flatpak:** download [`Omnimark.flatpak`](https://github.com/jpsutton/omnimark/releases/latest/download/Omnimark.flatpak), then run `flatpak install --user Omnimark.flatpak`. It uses the `org.kde.Platform` 6.10 runtime from Flathub. If you don't have that runtime, run `flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo` first.
+
+### Windows and macOS
+
+These builds are best effort and not code-signed.
+
+- **Windows:** run `Omnimark-<version>-win64.exe` from the release. SmartScreen warns about an unknown publisher: choose **More info → Run anyway**. The installer registers Omnimark under "Open with" for `.md` files.
+- **macOS (Apple silicon):** open `Omnimark-<version>-Darwin.dmg` and drag Omnimark to Applications. Gatekeeper blocks the first launch. Either right-click the app and choose **Open**, or run `xattr -dr com.apple.quarantine /Applications/Omnimark.app`.
+
+### Verifying downloads
+
+Each release has a `SHA256SUMS` file and a `.sig` signature for every file. To check the files you downloaded:
+
+```bash
+curl -fsSL https://github.com/jpsutton/omnimark/releases/latest/download/omnimark-signing-key.asc | gpg --import
+gpg --verify SHA256SUMS.sig SHA256SUMS && sha256sum --check --ignore-missing SHA256SUMS
+```
+
+Release key: `5F2F BC3C 175D 49D9 F491  2198 97A9 E841 85E0 2236` (Ed25519, also in [packaging/omnimark-signing-key.asc](packaging/omnimark-signing-key.asc)).
+
 ## Features
 
 **Markdown**
@@ -93,6 +149,8 @@ omnimark [files or folders...]
 
 ## Packaging
 
+To install a release build, see [Install](#install). To build the packages yourself:
+
 | Target | How |
 |---|---|
 | Arch Linux | `cd packaging/linux/arch && makepkg -si` |
@@ -108,36 +166,6 @@ Changes flow from feature branches into `staging`, then from `staging` into `rel
 - `checks.yml` runs on every pull request: static checks, web unit and browser tests, and the Linux C++/GUI tests.
 - `build.yml` runs on pull requests into `release`. It builds the AppImage, Arch package and Flatpak, which a release requires, and the Windows and macOS packages, which are best effort and unsigned.
 - `release.yml` runs when `staging` is merged into `release` with a merge commit. It publishes that pull request's build as a GitHub Release tagged `YYYY.MM.DD`, signs every file with the release key, and includes `SHA256SUMS` and a signed pacman repo.
-
-Verify a download:
-
-```bash
-curl -sL https://raw.githubusercontent.com/jpsutton/omnimark/staging/packaging/omnimark-signing-key.asc | gpg --import
-gpg --verify SHA256SUMS.sig SHA256SUMS && sha256sum --check --ignore-missing SHA256SUMS
-```
-
-Release key: `5F2F BC3C 175D 49D9 F491  2198 97A9 E841 85E0 2236` (Ed25519, also in [packaging/omnimark-signing-key.asc](packaging/omnimark-signing-key.asc)).
-
-Arch Linux users can install from the signed pacman repo:
-
-```bash
-scripts/setup-arch-repo.sh --install
-```
-
-The script adds `[omnimark]` to `/etc/pacman.conf` and trusts the release key, refusing it if the fingerprint doesn't match. It is safe to re-run, and `--remove` undoes it. To set it up by hand instead:
-
-```ini
-# /etc/pacman.conf
-[omnimark]
-Server = https://github.com/jpsutton/omnimark/releases/latest/download
-```
-
-```bash
-curl -sLO https://github.com/jpsutton/omnimark/releases/latest/download/omnimark-signing-key.asc
-sudo pacman-key --add omnimark-signing-key.asc
-sudo pacman-key --lsign-key 5F2FBC3C175D49D9F491219897A9E84185E02236
-sudo pacman -Sy omnimark
-```
 
 ## Development
 
@@ -159,6 +187,13 @@ cd web && pnpm test:e2e    # frontend UI tests in Chromium (Playwright, mock bri
 ctest --preset debug       # C++ unit tests + GUI tests driving real QtWebEngine pages
 ```
 
+To retake the README screenshot from the mock documents in `docs/screenshot/demo/` (works headless):
+
+```bash
+cd docs/screenshot && QT_QPA_PLATFORM=offscreen QTWEBENGINE_CHROMIUM_FLAGS="--disable-gpu --disable-gpu-compositing" \
+  omnimark --view split --screenshot split-view.png demo demo/field-notes.md
+```
+
 To run the Playwright tests without installing browsers locally:
 
 ```bash
@@ -175,6 +210,7 @@ web/src/        TypeScript frontend
   editor/       CodeMirror setup
   export/       standalone HTML builder
 samples/        Feature showcase documents (also test fixtures)
+docs/           Design plan; README screenshot and its mock documents
 tests/cpp/      Qt Test unit and GUI tests
 packaging/      Icons, desktop/AppStream/MIME files, PKGBUILD, Flatpak, AppImage, macOS/Windows resources
 ```
