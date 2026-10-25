@@ -12,28 +12,28 @@ Builds are published on the [Releases page](https://github.com/jpsutton/omnimark
 
 ### Arch Linux (pacman repo)
 
-Each release includes a signed pacman repo, so `pacman -Syu` picks up new versions. To add it:
+Omnimark is in the signed [jpsutton pacman repository](https://github.com/jpsutton/arch-repo), so `pacman -Syu` picks up new versions. To add it:
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/jpsutton/omnimark/release/scripts/setup-arch-repo.sh
-bash setup-arch-repo.sh --install
+curl -fsSLO https://jpsutton.github.io/arch-repo/setup.sh
+bash setup.sh --install omnimark
 ```
 
-The script adds `[omnimark]` to `/etc/pacman.conf` and adds the release key to the pacman keyring. If the downloaded key's fingerprint doesn't match, the script refuses it. You can run the script again safely. Without `--install` it only adds the repo, and `--remove` removes the repo and the key.
+The script adds `[jpsutton]` to `/etc/pacman.conf` and adds the repository key to the pacman keyring. If the downloaded key's fingerprint doesn't match, the script refuses it. It also removes the old `[omnimark]` repository, which no longer gets updates. You can run the script again safely. Without `--install` it only adds the repo, and `--remove` removes the repo and the key.
 
-To set it up by hand, add this to `/etc/pacman.conf`:
+To set it up by hand, add this to `/etc/pacman.conf` (and remove an old `[omnimark]` section):
 
 ```ini
-[omnimark]
-Server = https://github.com/jpsutton/omnimark/releases/latest/download
+[jpsutton]
+Server = https://jpsutton.github.io/arch-repo/$arch
 ```
 
 Then trust the key and install:
 
 ```bash
-curl -fsSLO https://github.com/jpsutton/omnimark/releases/latest/download/omnimark-signing-key.asc
-sudo pacman-key --add omnimark-signing-key.asc
-sudo pacman-key --lsign-key 5F2FBC3C175D49D9F491219897A9E84185E02236
+curl -fsSLO https://jpsutton.github.io/arch-repo/jpsutton-signing-key.asc
+sudo pacman-key --add jpsutton-signing-key.asc
+sudo pacman-key --lsign-key 8476350364502FEDD331B66BEDB90079E3C73E41
 sudo pacman -Sy omnimark
 ```
 
@@ -176,7 +176,7 @@ Changes flow from feature branches into `staging`, then from `staging` into `rel
 
 - `checks.yml` runs on every pull request: static checks, web unit and browser tests, and the Linux C++/GUI tests.
 - `build.yml` runs on pull requests into `release`. It builds the AppImage, Arch package and Flatpak, which a release requires, and the Windows and macOS packages, which are best effort and unsigned.
-- `release.yml` runs when `staging` is merged into `release` with a merge commit. It publishes that pull request's build as a GitHub Release tagged `YYYY.MM.DD`, signs every file with the release key, and includes `SHA256SUMS`, a signed pacman repo and `update.json`, which the macOS updater reads.
+- `release.yml` runs when `staging` is merged into `release` with a merge commit. It publishes that pull request's build as a GitHub Release tagged `YYYY.MM.DD`, signs every file with the release key, and includes `SHA256SUMS` and `update.json`, which the macOS updater reads. The [jpsutton pacman repository](https://github.com/jpsutton/arch-repo) picks up the Arch package from there.
 
 ## Development
 

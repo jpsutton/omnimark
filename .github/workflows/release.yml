@@ -1,8 +1,9 @@
 # Publish on merge into release, without rebuilding: the pull request from
 # staging already ran the full build (build.yml), so this takes that run's
-# artifacts, signs every one (OMNIMARK_GPG_KEY), builds a signed pacman repo,
-# tags the release (YYYY.MM.DD, .N for more in one day) and creates a GitHub
-# Release with the packages, signatures and SHA256SUMS.
+# artifacts, signs every one (OMNIMARK_GPG_KEY), tags the release (YYYY.MM.DD,
+# .N for more in one day) and creates a GitHub Release with the packages,
+# signatures and SHA256SUMS. The jpsutton pacman repository (jpsutton/arch-repo)
+# then picks up the Arch package.
 #
 # Merge staging -> release pull requests with "Create a merge commit": the PR's
 # head is then the merge commit's second parent, which is what this looks up.
@@ -130,3 +131,16 @@ jobs:
           gh release create "${{ steps.tag.outputs.tag }}" -R "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" --title "Omnimark ${{ steps.tag.outputs.tag }}" \
             --generate-notes "${assets[@]}"
+
+      # jpsutton/arch-repo checks for new releases hourly; this makes it publish now.
+      # Best effort: needs a token that can write to that repository.
+      - name: Update the pacman repository
+        env:
+          ARCH_REPO_DISPATCH_TOKEN: ${{ secrets.ARCH_REPO_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$ARCH_REPO_DISPATCH_TOKEN" ]; then
+            echo "::notice::ARCH_REPO_DISPATCH_TOKEN is not set; jpsutton/arch-repo picks up the release within the hour"
+            exit 0
+          fi
+          GH_TOKEN=$ARCH_REPO_DISPATCH_TOKEN gh api repos/jpsutton/arch-repo/dispatches -f event_type=package-released \
+            || echo "::warning::could not notify jpsutton/arch-repo; it picks up the release within the hour"
